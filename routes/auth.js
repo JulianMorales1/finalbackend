@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const { uuid } = require('uuidv4');
 const { blogsDB } = require("../mongo");
 
-const createUser = async (username, passwordHash) => {
+const createUser = async (username, passwordHash, admin) => {
 
     try {
         const collection = await blogsDB().collection("users")
@@ -15,7 +15,8 @@ const createUser = async (username, passwordHash) => {
         const user = {
             username: username,
             password: passwordHash,
-            uid: uuid() // uid stands for User ID. This will be a unique string that we will can to identify our user
+            uid: uuid(), // uid stands for User ID. This will be a unique string that we will can to identify our user
+            admin: admin
         }
 
         await collection.insertOne(user);
@@ -31,10 +32,12 @@ router.post("/register-user", async function (req, res, next) {
 
     const username = req.body.username
     const password = req.body.password
+    const admin = req.body.admin;
+
     const saltRounds = 5; // In a real application, this number would be somewhere between 5 and 10
     const salt = await bcrypt.genSalt(saltRounds)
     const hash = await bcrypt.hash(password, salt)
-    const userSaveSuccess = await createUser(username, hash);
+    const userSaveSuccess = await createUser(username, hash, admin);
     if (userSaveSuccess === true) {
         res.json({ success: true });
     }
@@ -58,7 +61,10 @@ router.post("/login-user", async function (req, res, next) {
     }
     const token = jwt.sign(data, jwtSecretKey);
 
-    if (match === true) { res.json({ "success": true, token }) }
+    console.log(match)
+
+    if (match === true) { res.json({ "success": true, token, userid: user._id, user: user }) }
+
     if (match === false) { res.json({ "success": false }) }
 })
 
@@ -82,6 +88,13 @@ router.post("/auth/validate-token", async function (req, res, next) {
         console.error(error)
         return res.status(401).json({ success: true, message: String(error) });
     }
+})
+
+
+router.get('/auth/me/', async function (req, res, next) {
+
+    // get curretn logged in user
+
 })
 
 
